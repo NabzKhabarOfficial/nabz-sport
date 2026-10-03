@@ -42,9 +42,20 @@ function isLive(m) { return !!m.isLive || m.status === 2; }
 function isDone(m) { return m.status === 7; }
 
 function scorePair(m) {
-  const h = m.sport === 3 ? m.hostPoint : m.hostGoals;
-  const g = m.sport === 3 ? m.guestPoint : m.guestGoals;
-  return (h === "" || h == null || g === "" || g == null) ? null : [h, g];
+  if (m.sport !== 3 && m.matchGoals && m.matchGoals.host != null) return [m.matchGoals.host, m.matchGoals.guest];
+  if (m.goals && m.goals.host != null) return [m.goals.host, m.goals.guest];
+  const clean = v => String(v ?? "").replace(/\s*\(.*\)\s*/, "").trim();
+  const h = clean(m.sport === 3 ? m.hostPoint : m.hostGoals);
+  const g = clean(m.sport === 3 ? m.guestPoint : m.guestGoals);
+  return (h === "" || g === "") ? null : [h, g];
+}
+
+/* Penalty shoot-out score, whichever shape the source uses. */
+function penPair(m) {
+  if (m.penaltyGoals && m.penaltyGoals.host != null) return [m.penaltyGoals.host, m.penaltyGoals.guest];
+  if (m.penalties && m.penalties.host != null) return [m.penalties.host, m.penalties.guest];
+  if (m.hasPenalty && m.hostPenalty != null) return [m.hostPenalty, m.guestPenalty];
+  return null;
 }
 
 function statusText(m) {

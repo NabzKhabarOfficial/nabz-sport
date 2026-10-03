@@ -31,7 +31,8 @@ function render(m, lg, events) {
   document.title = `${norm(m.hostName)} - ${norm(m.guestName)} | نبض ورزش`;
   const w = watchUrl(m), rep = reporter(m);
   const cta = (w && !isDone(m)) ? `<a class="cta" href="${esc(w)}" target="_blank" rel="nofollow noopener">▶ تماشای پخش زنده در آنتن ${rep ? `<small>· گزارش ${esc(rep)}</small>` : ""}</a>` : "";
-  const pens = (m.hasPenalty && m.hostPenalty != null) ? `<div class="pens">پنالتی: ${FA(m.hostPenalty)} - ${FA(m.guestPenalty)}</div>` : "";
+  const pp = penPair(m);
+  const pens = pp ? `<div class="pens">پنالتی: ${FA(pp[0])} - ${FA(pp[1])}</div>` : "";
   const info = [
     ["رقابت", norm(lg ? lg.title : "")],
     ["زمان", (m.scheduledStartDate ? FA(norm(m.scheduledStartDate)) + " · " : "") + FA(m.time || "")],

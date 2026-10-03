@@ -6,7 +6,8 @@ function leagueBig(title) { return BIG.test(title) && !MINOR.test(title); }
 function rowHTML(m) {
   const sc = scorePair(m), live = isLive(m), done = isDone(m);
   const hw = done && m.winner === 0 && m.winnerId === m.hostId, gw = done && m.winnerId === m.guestId;
-  const pen = (m.hostPenalty != null && m.guestPenalty != null && m.hasPenalty) ? `<span class="pen">پ ${FA(m.hostPenalty)}-${FA(m.guestPenalty)}</span>` : "";
+  const pp = penPair(m);
+  const pen = pp ? `<span class="pen">پنالتی ${FA(pp[0])}-${FA(pp[1])}</span>` : "";
   const scoreHTML = sc ? `<div class="score${live ? " live" : ""}">${FA(sc[0])} - ${FA(sc[1])}${pen}</div>` : `<div class="score" style="color:var(--muted);font-size:14px">-</div>`;
   const w = watchUrl(m);
   const watch = (w && !done) ? `<a class="watch" href="${esc(w)}" target="_blank" rel="nofollow noopener">▶ تماشا</a>` : `<span></span>`;
