@@ -87,7 +87,77 @@ def _form(cell):
     return out[-5:]
 
 
+class _Tokens(HTMLParser):
+    """Flat stream of text chunks and image sources, independent of the markup."""
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.items, self._skip = [], 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in ("script", "style"):
+            self._skip += 1
+        elif tag == "img":
+            a = dict(attrs)
+            src = a.get("src") or a.get("data-src") or ""
+            if src:
+                self.items.append(("img", src))
+
+    def handle_endtag(self, tag):
+        if tag in ("script", "style") and self._skip:
+            self._skip -= 1
+
+    def handle_data(self, data):
+        t = re.sub(r"\s+", " ", data).strip()
+        if t and not self._skip:
+            self.items.append(("txt", t))
+
+
+_INT = re.compile(r"^[-+]?\d+$")
+_GOALS = re.compile(r"^(\d+)\s*-\s*(\d+)$")
+
+
+def parse_tokens(html):
+    """Fallback: walk text chunks looking for rank, team, p, w, d, l, 'gf-ga', gd, pts, form."""
+    tk = _Tokens()
+    tk.feed(html)
+    items = tk.items
+    texts = [(i, v.translate(FA2EN).replace("−", "-")) for i, (k, v) in enumerate(items) if k == "txt"]
+    rows, j, want = [], 0, 1
+    while j < len(texts) - 8:
+        vals = [v for _, v in texts[j:j + 9]]
+        if (vals[0] == str(want) and not _INT.match(vals[1]) and all(_INT.match(x) for x in vals[2:6])
+                and _GOALS.match(vals[6]) and _INT.match(vals[7]) and _INT.match(vals[8])):
+            start, end = texts[j][0], texts[j + 1][0]
+            logo = next((items[k][1] for k in range(start, end + 1) if items[k][0] == "img"), "")
+            g = _GOALS.match(vals[6])
+            form, k = [], j + 9
+            while k < len(texts) and len(form) < 5:
+                letters = re.findall(r"\b([WDL])\b", texts[k][1].upper())
+                if not letters or not re.fullmatch(r"[WDLwdl\s]+", texts[k][1]):
+                    break
+                form += letters
+                k += 1
+            rows.append({"rank": want, "team": vals[1], "logo": logo, "p": int(vals[2]), "w": int(vals[3]),
+                         "d": int(vals[4]), "l": int(vals[5]), "gf": int(g.group(1)), "ga": int(g.group(2)),
+                         "gd": int(vals[7]), "pts": int(vals[8]), "form": form[:5]})
+            want += 1
+            j = k
+            continue
+        j += 1
+    return rows
+
+
 def parse(html):
+    rows, updated = _parse_table(html)
+    if len(rows) < 6:
+        alt = parse_tokens(html)
+        if len(alt) > len(rows):
+            rows = alt
+    return rows, updated
+
+
+def _parse_table(html):
     p = _Tables()
     p.feed(html)
     best = None
@@ -134,7 +204,8 @@ def build(get_html, out_dir):
         if len(rows) < 6:
             print(f"table {lid}: no usable rows")
             # keep a sample so the page structure can be inspected from the deployed site
-            (out / f"debug_{lid}.html").write_text(html[:300000], encoding="utf-8")
+            i = html.find("امتیاز")
+            (out / f"debug_{lid}.txt").write_text(html[max(0, i - 3000):i + 6000], encoding="utf-8")
             continue
         (out / f"{lid}.json").write_text(json.dumps({"id": lid, "title": title, "updated": updated, "rows": rows},
                                                     ensure_ascii=False), encoding="utf-8")
