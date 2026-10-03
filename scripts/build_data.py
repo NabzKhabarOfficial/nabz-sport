@@ -9,6 +9,8 @@ from pathlib import Path
 
 import requests
 
+import tables
+
 API = "https://web-api.varzesh3.com/v1.0/livescore"
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0 Safari/537.36",
            "Referer": "https://www.varzesh3.com/", "Accept": "application/json"}
@@ -27,7 +29,28 @@ def get(url):
     return None
 
 
+def get_html(url):
+    for attempt in range(3):
+        try:
+            r = requests.get(url, headers={**HEADERS, "Accept": "text/html"}, timeout=20)
+            r.raise_for_status()
+            r.encoding = "utf-8"
+            return r.text
+        except Exception as exc:
+            print(f"page failed ({attempt + 1}/3) {url}: {exc}")
+            time.sleep(2 * (attempt + 1))
+    return ""
+
+
+def build_tables():
+    try:
+        tables.build(get_html, OUT / "tables")
+    except Exception as exc:
+        print(f"tables failed: {exc}")
+
+
 def main():
+    build_tables()
     (OUT / "m").mkdir(parents=True, exist_ok=True)
     today = get(f"{API}/today")
     if not today or "matches" not in today:
