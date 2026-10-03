@@ -123,6 +123,13 @@ def parse_tokens(html):
     tk.feed(html)
     items = tk.items
     texts = [(i, v.translate(FA2EN).replace("−", "-")) for i, (k, v) in enumerate(items) if k == "txt"]
+    merged = []
+    for t in texts:  # "13", "-", "5" -> "13-5"
+        if len(merged) >= 2 and merged[-1][1] == "-" and re.fullmatch(r"\d+", merged[-2][1]) and re.fullmatch(r"\d+", t[1]):
+            merged[-2:] = [(merged[-2][0], merged[-2][1] + "-" + t[1])]
+        else:
+            merged.append(t)
+    texts = merged
     rows, j, want = [], 0, 1
     while j < len(texts) - 8:
         vals = [v for _, v in texts[j:j + 9]]
@@ -162,10 +169,11 @@ def _parse_table(html):
     p.feed(html)
     best = None
     for table in p.tables:
-        if not table or not any("امتیاز" in c["text"] for c in table[0]):
+        head = next((i for i, row in enumerate(table) if any("امتیاز" in c["text"] for c in row)), None)
+        if head is None:
             continue
         rows = []
-        for r in table[1:]:
+        for r in table[head + 1:]:
             if len(r) < 9:
                 continue
             rank = _num(r[0]["text"])
