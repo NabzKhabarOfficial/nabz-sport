@@ -32,7 +32,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Snapshot live scores
+      - name: Snapshot live scores and league tables
         run: |
           python -m pip install --quiet requests
           python scripts/build_data.py
@@ -40,7 +40,7 @@ jobs:
       - name: Prepare site
         run: |
           mkdir -p _site
-          cp -r index.html match.html manifest.json robots.txt assets data _site/
+          cp -r *.html manifest.json robots.txt assets data _site/
           touch _site/.nojekyll
 
       - name: Upload site
