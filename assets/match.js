@@ -1,6 +1,9 @@
 /* نبض ورزش: match page */
-const ID = new URLSearchParams(location.search).get("id") || "";
-const [KIND, NUM] = ID.split("-");
+// The id comes from the URL, so only a known shape (e.g. "football-123456") is accepted before it
+// is used in API and file paths (audit, Oct 2026).
+const RAW_ID = new URLSearchParams(location.search).get("id") || "";
+const ID = /^[a-z]+-\d{1,12}$/i.test(RAW_ID) ? RAW_ID : "";
+const [KIND, NUM] = ID ? ID.split("-") : ["", ""];
 let TIMER = null;
 
 const EV_ICON = {1: "⚽", 2: "🟨", 4: "🔁", 6: "🎯"};
@@ -60,14 +63,15 @@ function render(m, lg, events) {
 }
 
 async function refresh() {
+  if (!ID) { document.getElementById("match").innerHTML = `<div class="empty">آدرس این بازی معتبر نیست.</div>`; return; }
   try {
     const t = await loadWithFallback(API + "/today", "data/today.json");
     const m = (t.data.matches || []).find(x => x.sportId === ID);
     if (!m) { document.getElementById("match").innerHTML = `<div class="empty">این بازی در فهرست امروز نیست.</div>`; return; }
     const lg = (t.data.leagues || []).find(l => l.id === m.leagueId);
     let events = [];
-    if (m.hasEvents && KIND === "football") {
-      try { events = (await loadWithFallback(`${API}/football/matches/${NUM}/events`, `data/m/${ID}.json`)).data || []; }
+    if (m.hasEvents && KIND === "football" && /^\d+$/.test(NUM)) {
+      try { events = (await loadWithFallback(`${API}/football/matches/${encodeURIComponent(NUM)}/events`, `data/m/${encodeURIComponent(ID)}.json`)).data || []; }
       catch (e) { events = []; }
     }
     render(m, lg, Array.isArray(events) ? events : []);
